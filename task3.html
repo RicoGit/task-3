@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Task 3</title>
+    <style>
+        body {
+            background: black;
+        }
+       .container {
+            margin: 100px auto;
+            width: 500px;
+            height: 500px;
+            border: 1px solid gray;
+            background: #4a4a4a;
+       }
+       .container svg {
+           border: 1px solid green;
+           width: inherit;
+           height: inherit;
+       }
+       /*.dot {*/
+            /*position: absolute;*/
+            /*width: 4px;*/
+            /*height: 4px;*/
+            /*border: 0;*/
+            /*border-radius: 2px;*/
+       /*}*/
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+</div>
+
+
+<script src="http://yastatic.net/d3/3.4.5/d3.js"></script>
+<script>
+
+
+    (function() {
+        'use strict';
+
+        /* initialisation */
+
+        var dotNumber = 100;
+        var RED_COLOR = '#FF2222';
+        var YELLOW_COLOR = '#FFF666';
+
+        var container = d3.select('.container').append('svg');
+        var containerHeight = d3.select('.container').property('clientHeight');
+        var containerWidth = d3.select('.container').property('clientWidth');
+        var coords = [];
+
+        for (var i = 0; i < dotNumber; i++) {
+            coords.push({
+                cx: Math.ceil(Math.random() * (containerHeight - 10) + 5),
+                cy:  Math.ceil(Math.random() * (containerWidth - 10) + 5)
+            })
+        }
+
+        // create dots
+        container.selectAll('circle')
+                .data(coords)
+                .enter()
+                .append('circle')
+                .attr('cx', function(data) {
+                    return data.cx;
+                })
+                .attr('cy', function(data) {
+                    return data.cy;
+                })
+                .attr('r', 5);
+
+
+        // color animation
+        d3.selectAll('circle')
+                .each(function() {
+                    //change color cycle between 1s and 1.5s
+                    var cycle = (Math.random() * 1000 + 1000);
+                    changeColor(this, cycle);
+                });
+
+        function changeColor(element, cycle) {
+
+            d3.select(element)
+                    .style('fill', YELLOW_COLOR)
+                    .transition()
+                    .duration(cycle / 2)
+                    .style('fill', RED_COLOR)
+                    .transition()
+                    .duration(cycle / 2)
+                    .style('fill', YELLOW_COLOR);
+
+            setTimeout(function() {
+                changeColor(element, cycle)
+            }, cycle);
+        }
+
+        // fluctuations
+
+        fluctuation();
+
+        function fluctuation() {
+
+            var circle = container.selectAll('circle')
+                    .data(coords);
+
+            changeCoords();
+
+            circle
+                    .attr("cx", function(d) { return d.cx; })
+                    .attr("cy", function(d) { return d.cy; })
+            setTimeout(fluctuation, 100)
+        };
+
+
+
+
+        function changeCoords() {
+            for (var i = 0; i < dotNumber; i++) {
+                var element = coords[i];
+                element.cx += (Math.random() >= 0.5) ? 5 : -5;
+                element.cy += (Math.random() >= 0.5) ? 5 : -5;
+            }
+        }
+
+
+    })();
+</script>
+</body>
+</html>
