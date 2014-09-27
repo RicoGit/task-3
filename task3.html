@@ -9,23 +9,15 @@
         }
        .container {
             margin: 100px auto;
-            width: 500px;
-            height: 500px;
+            width: 512px;
+            height: 512px;
             border: 1px solid gray;
             background: #4a4a4a;
        }
        .container svg {
-           border: 1px solid green;
            width: inherit;
            height: inherit;
        }
-       /*.dot {*/
-            /*position: absolute;*/
-            /*width: 4px;*/
-            /*height: 4px;*/
-            /*border: 0;*/
-            /*border-radius: 2px;*/
-       /*}*/
     </style>
 </head>
 <body>
@@ -42,39 +34,93 @@
     (function() {
         'use strict';
 
-        /* initialisation */
 
-        var dotNumber = 100;
+        // константы
+        var DOT_NUMBER = 8;
+        var FIELD_SIZE = 512;
         var RED_COLOR = '#FF2222';
         var YELLOW_COLOR = '#FFF666';
+        var CIRCLE_RADIUS = 64;
+        //колличество ячеек в поле
+        var BOX_NUMBER = FIELD_SIZE / (CIRCLE_RADIUS * 2);
+        // вектор всевозможных координат
+        var VECTOR = [];
 
-        var container = d3.select('.container').append('svg');
-        var containerHeight = d3.select('.container').property('clientHeight');
-        var containerWidth = d3.select('.container').property('clientWidth');
+        //таблица координат
         var coords = [];
+        var container = d3.select('.container').append('svg');
 
-        for (var i = 0; i < dotNumber; i++) {
-            coords.push({
-                cx: Math.ceil(Math.random() * (containerHeight - 10) + 5),
-                cy:  Math.ceil(Math.random() * (containerWidth - 10) + 5)
-            })
+
+        //заполняем матрицу координатами
+
+        for (var x = 0; x < BOX_NUMBER; x++) {
+            for (var y = 0; y < BOX_NUMBER; y++) {
+                VECTOR[ getNumber(x, y) ] = {
+                    x: CIRCLE_RADIUS  + (x * CIRCLE_RADIUS * 2),
+                    y: CIRCLE_RADIUS  + (y * CIRCLE_RADIUS * 2),
+                    siblings: getSibling(x, y)
+                };
+            }
         }
 
-        // create dots
+
+        function getSibling(x, y) {
+            var result = [];
+            if (x < BOX_NUMBER - 1) {
+                result.push(getNumber(x + 1, y))
+            }
+            if (x > 0) {
+                result.push(getNumber(x - 1, y))
+            }
+            if (y < BOX_NUMBER - 1) {
+                result.push(getNumber(x, y + 1))
+            }
+            if (y > 0) {
+                result.push(getNumber(x, y - 1))
+            }
+            return result;
+        }
+
+        function getNumber(x, y) {
+            return (x * BOX_NUMBER + y);
+        }
+
+        var VECTOR_SIZE = VECTOR.length - 1;
+
+        // распределяем точки по матрице
+
+        for (var i = 0; i < DOT_NUMBER; i++) {
+            coords[i] = {
+                boxNumber: getFreeBoxNumber()
+            };
+        }
+
+        function getFreeBoxNumber() {
+            var randomFreeNumber = Math.round(Math.random() * VECTOR_SIZE);
+            if  (randomFreeNumber in coords) {
+                getFreeBoxNumber();
+            }
+            return randomFreeNumber;
+        }
+
+
+        // рисуем точки
+
         container.selectAll('circle')
                 .data(coords)
                 .enter()
                 .append('circle')
                 .attr('cx', function(data) {
-                    return data.cx;
+                    return VECTOR[data.boxNumber].x;
                 })
                 .attr('cy', function(data) {
-                    return data.cy;
+                    return VECTOR[data.boxNumber].y;
                 })
-                .attr('r', 5);
+                .attr('r', CIRCLE_RADIUS);
 
 
-        // color animation
+        // добавляем анимацию сменя цвета
+
         d3.selectAll('circle')
                 .each(function() {
                     //change color cycle between 1s and 1.5s
@@ -98,7 +144,7 @@
             }, cycle);
         }
 
-        // fluctuations
+        // добавляем колемания
 
         fluctuation();
 
@@ -107,25 +153,46 @@
             var circle = container.selectAll('circle')
                     .data(coords);
 
-            changeCoords();
-
             circle
-                    .attr("cx", function(d) { return d.cx; })
-                    .attr("cy", function(d) { return d.cy; })
-            setTimeout(fluctuation, 100)
-        };
-
-
-
-
-        function changeCoords() {
-            for (var i = 0; i < dotNumber; i++) {
-                var element = coords[i];
-                element.cx += (Math.random() >= 0.5) ? 5 : -5;
-                element.cy += (Math.random() >= 0.5) ? 5 : -5;
-            }
+                    .transition()
+                    .duration(100)
+                    .attr("cx", function(data, i) {
+                        data.boxNumber = findFreeBoxNumber(data);
+                        coords[i] = {boxNumber: data.boxNumber};
+                        return VECTOR[ data.boxNumber ].x;
+                    })
+                    .attr("cy", function(data,i) {
+                        data.boxNumber = findFreeBoxNumber(data);
+                        coords[i] = {boxNumber: data.boxNumber};
+                        return VECTOR[ data.boxNumber ].y;
+                    });
+            setTimeout(fluctuation, 500)
         }
 
+
+
+
+        function findFreeBoxNumber(data) {
+            var siblings = [].concat(VECTOR[data.boxNumber].siblings);
+            do {
+                var randomElement = getRandomElement(siblings);
+                siblings.splice(siblings.indexOf(randomElement), 1);
+            } while (check(randomElement));
+            return  randomElement;
+        }
+
+        function check(randomElement) {
+            for (var i = 0; i < coords.length; i++) {
+                var coord = coords[i];
+                return coord.boxNumber == randomElement;
+            }
+
+        }
+
+        function getRandomElement(array) {
+            var random = Math.round(Math.random() * (array.length - 1));
+            return array[random];
+        }
 
     })();
 </script>
