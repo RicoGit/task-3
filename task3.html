@@ -7,13 +7,14 @@
         body {
             background: black;
         }
-       .container {
+
+        .container {
             margin: 100px auto;
             width: 500px;
             height: 500px;
             border: 1px solid gray;
             background: #4a4a4a;
-       }
+        }
     </style>
 </head>
 <body>
@@ -27,17 +28,24 @@
 <script>
 
 
-    (function() {
+    (function () {
         'use strict';
 
         /* initialisation */
 
-        var dotNumber = 100;
+        var dotNumber = 300;
         var RED_COLOR = '#FF2222';
         var YELLOW_COLOR = '#FFF666';
+        var DOT_RADIUS = 4;
+        var DOT_DIAMETER = DOT_RADIUS * 2;
+        var RAND_COLOR_COEFF = 4;
+
+        // требуемое расстояние между мышью и элементом
+        var maxDistance = 250;
 
         var containerHeight = d3.select('.container').property('clientHeight');
         var containerWidth = d3.select('.container').property('clientWidth');
+
         var container = d3.select('.container')
                 .append('svg')
                 .attr('height', containerHeight)
@@ -46,58 +54,42 @@
         var coords = [];
         var mouseCoords = [-100, -100];
 
-        container.on('mousemove', function() {
+        container.on('mousemove', function () {
             mouseCoords = d3.mouse(this);
-
         });
 
         for (var i = 0; i < dotNumber; i++) {
             coords.push({
-                cx: Math.ceil(Math.random() * (containerHeight - 10) + 5),
-                cy:  Math.ceil(Math.random() * (containerWidth - 10) + 5),
-                cycle: Math.ceil((Math.random() * 1000 + 1000))
+                cx: Math.ceil(Math.random() * (containerHeight - DOT_DIAMETER) + DOT_RADIUS),
+                cy: Math.ceil(Math.random() * (containerWidth - DOT_DIAMETER) + DOT_RADIUS),
+                // период полного круга смены цвета, для каждого элемента случайный
+                cycle: Math.ceil((Math.random() * RAND_COLOR_COEFF))
             })
         }
 
-       /* create dots */
+        /* create dots */
 
         container.selectAll('circle')
                 .data(coords)
                 .enter()
-                    .append('circle')
-                    .attr('cx', function(data) {
-                        return data.cx;
-                    })
-                    .attr('cy', function(data) {
-                        return data.cy;
-                    })
-                    .attr('r', 5)
-                    .attr('fill', YELLOW_COLOR);
+                .append('circle')
+                .attr('cx', function (data) {
+                    return data.cx;
+                })
+                .attr('cy', function (data) {
+                    return data.cy;
+                })
+                .attr('r', DOT_RADIUS)
+                .attr('fill', YELLOW_COLOR);
 
 
-        /* run color changer  */
+        /* fluctuations */
 
-        container.selectAll('circle')
-                .each(function (data) {
-                    changeColor(d3.select(this), data.cycle)
-                });
+        var colorScale = d3.scale.linear()
+                .domain([0, RAND_COLOR_COEFF * 2])
+                .range([YELLOW_COLOR, RED_COLOR]);
 
-
-        function changeColor(element, cycle) {
-            element
-                    .transition()
-                    .duration(cycle / 2)
-                    .attr('fill', RED_COLOR)
-                    .transition()
-                    .duration(cycle / 2)
-                    .attr('fill', YELLOW_COLOR);
-
-            setTimeout(function() {
-                changeColor(element, cycle)
-            }, cycle);
-        }
-
-       /* fluctuations */
+        var step = 1;
 
         fluctuation();
 
@@ -108,13 +100,31 @@
             setTimeout(fluctuation, cycle)
         }
 
-        function buildView() {
+        function buildView(cycle) {
 
             container.selectAll('circle')
                     .data(coords)
                     .transition()
-                    .attr("cx", function(d) { return d.cx; })
-                    .attr("cy", function(d) { return d.cy; });
+                    .duration(cycle)
+                    .attr("cx", function (d) {
+                        return d.cx;
+                    })
+                    .attr("cy", function (d) {
+                        return d.cy;
+                    })
+                    .attr('fill', function (d) {
+                        //вариант не очень конечно
+                        var cycle = d.cycle;
+                        if (cycle <= RAND_COLOR_COEFF * 2) {
+                            cycle = cycle + step;
+                        }
+                        if (cycle <= 0 || cycle >= RAND_COLOR_COEFF * 2) {
+                            step = -1 * step;
+                        }
+                        d.cycle = cycle;
+                        return colorScale(d.cycle)
+                    });
+
 
         }
 
@@ -122,45 +132,88 @@
 
             for (var i = 0; i < dotNumber; i++) {
                 var element = coords[i];
-                var elementCoordsAsArray = [element.cx, element.cy];
-                defineLineFunction(mouseCoords, elementCoordsAsArray, element);
 
-                element.cx += (Math.random() >= 0.5) ? 5 : -5;
-                element.cy += (Math.random() >= 0.5) ? 5 : -5;
+                if (calculateCoordsForRunAwayDots(mouseCoords, [element.cx, element.cy], element)) {
+                    //default fluctuation
+                    calculateCoordsForDefaultFluctuation(element);
+                }
+
+                element.cx = normalize(element.cx, DOT_RADIUS, containerWidth - DOT_RADIUS);
+                element.cy = normalize(element.cy, DOT_RADIUS, containerHeight - DOT_RADIUS);
             }
         }
 
+        function normalize(value, min, max) {
+            return (value < min) ? min : ((value > max) ? max : value);
+        }
 
-        function defineLineFunction(dot1, dot2, element) {
+        function calculateCoordsForDefaultFluctuation(element) {
+            element.cx += (Math.random() >= 0.5) ? DOT_DIAMETER : -1 * DOT_DIAMETER;
+            element.cy += (Math.random() >= 0.5) ? DOT_DIAMETER : -1 * DOT_DIAMETER;
+        }
+
+        function calculateCoordsForRunAwayDots(dot1, dot2, element) {
             // координаты мыши
             var x1 = dot1[0];
             var y1 = dot1[1];
             // координаты центра элемента
             var x2 = dot2[0];
             var y2 = dot2[1];
-            // требуемое расстояние между мышью и элементом
-            var maxDistance = 150;
 
             // найдем расстояние центра элемента от положения мыши
-            var currentDistance = Math.sqrt( (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) );
+            var currentDistance = Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 
-            if  (currentDistance > 100) {
-                return;
+            if (currentDistance > 100) {
+                return true;
             }
 
             // найдем расстояние на которое нужно переместить элемент
             var movedDistance = maxDistance - currentDistance;
-
+            // находим координату step лежащую на прямой на расстоянии maxDistance от мыши
             var cosA = (x1 - x2) / currentDistance;
             var x3 = x1 - cosA * movedDistance;
-
-            var cosB = (y1 - y2) / currentDistance;
-            var y3 = y1 - cosA * movedDistance;
-
+            // находим соответсвующую y координату
+            var y3 = -1 * (x3 * (y1 - y2) + (x1 * y2 - x2 * y1)) / (x2 - x1);
             element.cx = x3;
             element.cy = y3;
-            console.log(element);
         }
+
+        //bonus
+        d3.select('body').on('click', function () {
+            console.log(maxDistance);
+            maxDistance = (maxDistance == 20) ? 230 : 20;
+        });
+
+        container.on('mouseleave', function () {
+            mouseCoords = [-100, -100];
+        });
+
+
+        /* run color changer  */
+
+        // это вариант не работал при включенном transition() в ф-ии buildView
+        // поэтому пришлочь от него отказаться
+
+//        container.selectAll('circle')
+//                .each(function (data) {
+//                    changeColor(d3.select(this), data.cycle)
+//                });
+
+//
+//        function changeColor(element, cycle) {
+//            element
+//                    .transition()
+//                    .duration(cycle / 2)
+//                    .attr('fill', RED_COLOR)
+//                    .transition()
+//                    .duration(cycle / 2)
+//                    .attr('fill', YELLOW_COLOR);
+//
+//            setTimeout(function () {
+//                changeColor(element, cycle)
+//            }, cycle);
+//        }
+
 
     })();
 </script>
