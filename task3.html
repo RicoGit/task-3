@@ -14,18 +14,6 @@
             border: 1px solid gray;
             background: #4a4a4a;
        }
-       .container svg {
-           border: 1px solid green;
-           width: inherit;
-           height: inherit;
-       }
-       /*.dot {*/
-            /*position: absolute;*/
-            /*width: 4px;*/
-            /*height: 4px;*/
-            /*border: 0;*/
-            /*border-radius: 2px;*/
-       /*}*/
     </style>
 </head>
 <body>
@@ -48,84 +36,131 @@
         var RED_COLOR = '#FF2222';
         var YELLOW_COLOR = '#FFF666';
 
-        var container = d3.select('.container').append('svg');
         var containerHeight = d3.select('.container').property('clientHeight');
         var containerWidth = d3.select('.container').property('clientWidth');
+        var container = d3.select('.container')
+                .append('svg')
+                .attr('height', containerHeight)
+                .attr('width', containerWidth);
+
         var coords = [];
+        var mouseCoords = [-100, -100];
+
+        container.on('mousemove', function() {
+            mouseCoords = d3.mouse(this);
+
+        });
 
         for (var i = 0; i < dotNumber; i++) {
             coords.push({
                 cx: Math.ceil(Math.random() * (containerHeight - 10) + 5),
-                cy:  Math.ceil(Math.random() * (containerWidth - 10) + 5)
+                cy:  Math.ceil(Math.random() * (containerWidth - 10) + 5),
+                cycle: Math.ceil((Math.random() * 1000 + 1000))
             })
         }
 
-        // create dots
+       /* create dots */
+
         container.selectAll('circle')
                 .data(coords)
                 .enter()
-                .append('circle')
-                .attr('cx', function(data) {
-                    return data.cx;
-                })
-                .attr('cy', function(data) {
-                    return data.cy;
-                })
-                .attr('r', 5);
+                    .append('circle')
+                    .attr('cx', function(data) {
+                        return data.cx;
+                    })
+                    .attr('cy', function(data) {
+                        return data.cy;
+                    })
+                    .attr('r', 5)
+                    .attr('fill', YELLOW_COLOR);
 
 
-        // color animation
-        d3.selectAll('circle')
-                .each(function() {
-                    //change color cycle between 1s and 1.5s
-                    var cycle = (Math.random() * 1000 + 1000);
-                    changeColor(this, cycle);
+        /* run color changer  */
+
+        container.selectAll('circle')
+                .each(function (data) {
+                    changeColor(d3.select(this), data.cycle)
                 });
 
-        function changeColor(element, cycle) {
 
-            d3.select(element)
-                    .style('fill', YELLOW_COLOR)
+        function changeColor(element, cycle) {
+            element
                     .transition()
                     .duration(cycle / 2)
-                    .style('fill', RED_COLOR)
+                    .attr('fill', RED_COLOR)
                     .transition()
                     .duration(cycle / 2)
-                    .style('fill', YELLOW_COLOR);
+                    .attr('fill', YELLOW_COLOR);
 
             setTimeout(function() {
                 changeColor(element, cycle)
             }, cycle);
         }
 
-        // fluctuations
+       /* fluctuations */
 
         fluctuation();
 
         function fluctuation() {
-
-            var circle = container.selectAll('circle')
-                    .data(coords);
-
+            var cycle = 100;
+            buildView(cycle);
             changeCoords();
+            setTimeout(fluctuation, cycle)
+        }
 
-            circle
+        function buildView() {
+
+            container.selectAll('circle')
+                    .data(coords)
+                    .transition()
                     .attr("cx", function(d) { return d.cx; })
-                    .attr("cy", function(d) { return d.cy; })
-            setTimeout(fluctuation, 100)
-        };
+                    .attr("cy", function(d) { return d.cy; });
 
-
-
+        }
 
         function changeCoords() {
+
             for (var i = 0; i < dotNumber; i++) {
                 var element = coords[i];
+                var elementCoordsAsArray = [element.cx, element.cy];
+                defineLineFunction(mouseCoords, elementCoordsAsArray, element);
+
                 element.cx += (Math.random() >= 0.5) ? 5 : -5;
                 element.cy += (Math.random() >= 0.5) ? 5 : -5;
             }
         }
 
+
+        function defineLineFunction(dot1, dot2, element) {
+            // координаты мыши
+            var x1 = dot1[0];
+            var y1 = dot1[1];
+            // координаты центра элемента
+            var x2 = dot2[0];
+            var y2 = dot2[1];
+            // требуемое расстояние между мышью и элементом
+            var maxDistance = 150;
+
+            // найдем расстояние центра элемента от положения мыши
+            var currentDistance = Math.sqrt( (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) );
+
+            if  (currentDistance > 100) {
+                return;
+            }
+
+            // найдем расстояние на которое нужно переместить элемент
+            var movedDistance = maxDistance - currentDistance;
+
+            var cosA = (x1 - x2) / currentDistance;
+            var x3 = x1 - cosA * movedDistance;
+
+            var cosB = (y1 - y2) / currentDistance;
+            var y3 = y1 - cosA * movedDistance;
+
+            element.cx = x3;
+            element.cy = y3;
+            console.log(element);
+        }
 
     })();
 </script>
