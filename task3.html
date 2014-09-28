@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Task 3</title>
     <style>
+
         body {
             background: black;
         }
@@ -15,6 +16,7 @@
             border: 1px solid gray;
             background: #4a4a4a;
         }
+
     </style>
 </head>
 <body>
@@ -36,9 +38,8 @@
         var dotNumber = 300;
         var RED_COLOR = '#FF2222';
         var YELLOW_COLOR = '#FFF666';
-        var DOT_RADIUS = 4;
+        var DOT_RADIUS = 2;
         var DOT_DIAMETER = DOT_RADIUS * 2;
-        var RAND_COLOR_COEFF = 4;
 
         // требуемое расстояние между мышью и элементом
         var maxDistance = 250;
@@ -63,9 +64,13 @@
                 cx: Math.ceil(Math.random() * (containerHeight - DOT_DIAMETER) + DOT_RADIUS),
                 cy: Math.ceil(Math.random() * (containerWidth - DOT_DIAMETER) + DOT_RADIUS),
                 // период полного круга смены цвета, для каждого элемента случайный
-                cycle: Math.ceil((Math.random() * RAND_COLOR_COEFF))
+                cycle: Math.ceil((Math.random() * 1000 + 1000))
             })
         }
+
+        var colorScale = d3.scale.linear()
+                .domain([0, 2000])
+                .range([YELLOW_COLOR, RED_COLOR]);
 
         /* create dots */
 
@@ -80,16 +85,34 @@
                     return data.cy;
                 })
                 .attr('r', DOT_RADIUS)
-                .attr('fill', YELLOW_COLOR);
+                .attr('fill', function (d) {
+                    return colorScale(d.cycle - 1000)
+                });
 
+        /* run color changer  */
+
+        //  смена цвета работает не правильно, не хватило время разобраться
+
+        container.selectAll('circle')
+                .each(function (data) {
+                    changeColor(d3.select(this), data.cycle)
+                });
+
+        function changeColor(element, cycle) {
+            element
+                    .transition()
+                    .duration(cycle / 2)
+                    .attr('fill', RED_COLOR)
+                    .transition()
+                    .duration(cycle / 2)
+                    .attr('fill', YELLOW_COLOR);
+
+            setTimeout(function () {
+                changeColor(element, cycle)
+            }, cycle);
+        }
 
         /* fluctuations */
-
-        var colorScale = d3.scale.linear()
-                .domain([0, RAND_COLOR_COEFF * 2])
-                .range([YELLOW_COLOR, RED_COLOR]);
-
-        var step = 1;
 
         fluctuation();
 
@@ -112,19 +135,6 @@
                     .attr("cy", function (d) {
                         return d.cy;
                     })
-                    .attr('fill', function (d) {
-                        //вариант не очень конечно
-                        var cycle = d.cycle;
-                        if (cycle <= RAND_COLOR_COEFF * 2) {
-                            cycle = cycle + step;
-                        }
-                        if (cycle <= 0 || cycle >= RAND_COLOR_COEFF * 2) {
-                            step = -1 * step;
-                        }
-                        d.cycle = cycle;
-                        return colorScale(d.cycle)
-                    });
-
 
         }
 
@@ -180,40 +190,12 @@
 
         //bonus
         d3.select('body').on('click', function () {
-            console.log(maxDistance);
             maxDistance = (maxDistance == 20) ? 230 : 20;
         });
 
         container.on('mouseleave', function () {
             mouseCoords = [-100, -100];
         });
-
-
-        /* run color changer  */
-
-        // это вариант не работал при включенном transition() в ф-ии buildView
-        // поэтому пришлочь от него отказаться
-
-//        container.selectAll('circle')
-//                .each(function (data) {
-//                    changeColor(d3.select(this), data.cycle)
-//                });
-
-//
-//        function changeColor(element, cycle) {
-//            element
-//                    .transition()
-//                    .duration(cycle / 2)
-//                    .attr('fill', RED_COLOR)
-//                    .transition()
-//                    .duration(cycle / 2)
-//                    .attr('fill', YELLOW_COLOR);
-//
-//            setTimeout(function () {
-//                changeColor(element, cycle)
-//            }, cycle);
-//        }
-
 
     })();
 </script>
